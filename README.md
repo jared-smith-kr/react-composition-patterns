@@ -419,11 +419,11 @@ We've looked at a few patterns today:
 
 And we can extract some heuristics about when to use each:
 
-- Basic Composition: use this **first** and don't go beyond unless you have a good reason. Typically this is enough for most application usage, library developers will need to go deeper.
-- Inheritance: **never**.
-- HOCs: **Rarely**. Use-cases that deal with component composition are usually better served by basic composition and sometimes hooks, non-component composition (e.g. data fetches) are always better served by hooks.
-- Hooks: **Fairly often**: if you need something beyond basic components rendering other components for composition hooks should be your go-to.
-- Context: **Sparingly**. Use Context when you have a piece of information that you need to be read and/or written from lots of different and separated places in your app.
+- **Basic Composition**: use this **first** and don't go beyond unless you have a good reason. Typically this is enough for most application usage, library developers will need to go deeper.
+- **Inheritance**: Use this **never**.
+- **HOCs**: Use **rarely**. Use-cases that deal with component composition are usually better served by basic composition and sometimes hooks, non-component composition (e.g. data fetches) are always better served by hooks.
+- **Hooks**: Use **regularly**: if you need something beyond basic components rendering other components for composition hooks should be your go-to.
+- **Context**: Use **very sparingly**. Use Context when you have a (simple!) piece of information that you need to be read and/or written from lots of different and separated places in your app.
 
 ## Pachyderm
 
