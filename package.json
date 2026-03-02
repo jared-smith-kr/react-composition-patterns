@@ -2,6 +2,7 @@
   "name": "react-composition",
   "private": true,
   "type": "module",
+  "license": "unlicensed",
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
@@ -28,3 +29,4 @@
     "vite-tsconfig-paths": "^5.1.4"
   }
 }
+
