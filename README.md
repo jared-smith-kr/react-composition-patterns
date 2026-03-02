@@ -257,6 +257,156 @@ This is a pretty solid general recipe for interacting with Context. Note that yo
 
 Because Context is by its nature something you reach for when you need to make a common dependency available across disparate parts of the render tree be very wary of the peformance hit of triggering massive re-renders. Use memoization of things that aren't already memoized by React itself (like the setter callback from `useState`). This is especially true if you have a value that doesn't change that often depend on a value that does. For an example of that consider something like an `isMobile` flag: you're going to determine that based on viewport properties which might change frequently but there's only one breakpoint that flips the switch so be sure to memoize the value to avoid re-rendering things that only care about `isMobile` and not `width`. **NOTE:** there isn't really any way, including using `useMemo`, to memoize a selector over _part_ of an object. If you have a context value that is an object with multiple properties and some of those properties change more often than others you may need to split that into multiple contexts to avoid unnecessary re-renders. **DO NOT STICK LARGE COMPLEX OBJECTS IN CONTEXT**.
 
+### Fixing the Anti-Example
+
+So now we have some tools to refactor our beast of a component above:
+
+```typescript
+type SectionProps = {
+  displayName: string,
+  dateList: Date[],
+}
+
+type MyInputEvent = ChangeEvent<HTMLInputElement, HTMLInputElement>;
+
+// NOTE: here we've pulled out the validation logic for easier testing AND
+// better type-safety
+const isJSONResponse = (json: unknown): json is JSONResponse => {
+  return Boolean(json &&
+    typeof json === 'object' &&
+    'a' in json &&
+    typeof json.a === 'number' &&
+    'b' in json &&
+    typeof json.b === 'string' &&
+    'c' in json &&
+    Array.isArray(json.c) &&
+    json.c.length &&
+    'now' in json.c[0]
+  );
+}
+
+// NOTE: here we've pulled out the fetching logic, no need to inline this
+async function inputHandler(userInput: string): Promise<JSONResponse> {
+  const response = await fetch('https://theotherthing.somewhere', {
+    body: JSON.stringify({ userInput }),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    method: 'POST',
+  });
+
+  const data = await response.json();
+  if (isJSONResponse(data)) {
+    return data;
+  }
+
+  throw new Error('Invalid Response');
+}
+
+// NOTE: the main part of the UI is now ignorant of state mgmt, data
+// fetching, conditional rendering, etc.
+function MyBetterSectionContents({ displayName, dateList }: SectionProps) {
+  return (
+    <>
+      <h2>Dates</h2>
+      <div className="date-display">
+        <table>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dateList.map(dt => (
+              <tr>
+                <td>{displayName}</td>
+                <td>{dt.toISOString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+// NOTE: The conditional subsection is now independently testable/reusable
+function MyBetterSubSection({ displayName, dateList}: SectionProps) {
+  return (
+    <div className="something">
+      <div className="something-else">
+        <h3>Additional Dates {displayName}</h3>
+        {dateList.map(dt => <div className="date-row">{dt.toLocaleDateString()} </div>)}
+      </div>
+    </div>
+  );
+}
+
+function MyBetterInput({ onChange }: { onChange: (evt: MyInputEvent) => void }) {
+  return (
+    <>
+      <label for="additional-data-inp">Additional Request</label>
+      <input type="text" id="additional-data-inp" onChange={onChange} />
+    </>
+  );
+}
+
+// Pull the data fetch into a hook
+function useMyDataFetch() {
+  const [myState, setMyState] = useState<JSONResponse>();
+  const [err, setErr] = useState<Error>();
+
+  useEffect(() => {
+    fetch('https://thething.whatever')
+      .then(resp => resp.json())
+      .then(json => {
+        if (isJSONResponse(json)) {
+          setMyState(json);
+        } else {
+          throw new Error('bad response');
+        }
+      })
+      .catch(setErr);
+  }, []);
+
+  return { myState, err, isLoading: !myState && !err };
+}
+
+// NOTE: Wrapper component manages the state, fetching, errors, conditional
+// rendering, etc using Basic Composition and the hook we created.
+function MyBetterStateWrapper() {
+  const { myState, err, isLoading } = useMyDataFetch();
+  const [myOtherState, setMyOtherState] = useState<JSONResponse>();
+
+  const handler = useCallback((evt: MyInputEvent) => {
+    inputHandler(evt.target.value)
+      .then(setMyOtherState)
+      .catch(setErr);
+  }, [inputHandler]);
+
+  if (err) {
+    return <ErrorComponent err={err} />;
+  }
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  return (
+    <section>
+      <MyBetterSectionContents displayName={myState.b} dateList={myState.c} />
+      {myOtherState ?
+        <MyBetterSubSection displayName={`${myOtherState.b}: ${myOtherState.a}`} dateList={myOtherState.c} /> :
+        <MyBetterInput onChange={handler} />
+      }
+    </section>
+  );
+}
+```
+
+Now all our stuff is nice and clean, testable, reuseable, etc.
+
 ## Wrapping Up
 
 We've looked at a few patterns today:
