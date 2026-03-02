@@ -221,7 +221,8 @@ const BetterAcctDetailCtxSetter = React.createContext((_userDetails: User) => {}
 
 // And a provider for "seeding" the render tree
 const AcctDetailProvider = ({ children }: { children: React.ReactNode }) => {
-    const [userDetails, setUserDetails] = React.useState(DEFAULT_USER); // could also use useReducer here
+    // could also use useReducer here but be CAREFUL (see perf discussion below)
+    const [userDetails, setUserDetails] = React.useState(DEFAULT_USER);
     <BetterAcctDetailCtxGetter value={userDetails}>
       <BetterAcctDetailCtxSetter value={setUserDetails}>
         {children}
@@ -254,7 +255,7 @@ This is a pretty solid general recipe for interacting with Context. Note that yo
 
 ### A Final Word About Context
 
-Because Context is by its nature something you reach for when you need to make a common dependency available across disparate parts of the render tree be very wary of the peformance hit of triggering massive re-renders. Use memoization of things that aren't already memoized by React itself (like the setter callback from `useState`). This is especially true if you have a value that doesn't change that often depend on a value that does. For an example of that consider something like an `isMobile` flag: you're going to determine that based on viewport properties which might change frequently but there's only one breakpoint that flips the switch so be sure to memoize the value to avoid re-rendering things that only care about `isMobile` and not `width`.
+Because Context is by its nature something you reach for when you need to make a common dependency available across disparate parts of the render tree be very wary of the peformance hit of triggering massive re-renders. Use memoization of things that aren't already memoized by React itself (like the setter callback from `useState`). This is especially true if you have a value that doesn't change that often depend on a value that does. For an example of that consider something like an `isMobile` flag: you're going to determine that based on viewport properties which might change frequently but there's only one breakpoint that flips the switch so be sure to memoize the value to avoid re-rendering things that only care about `isMobile` and not `width`. **NOTE:** there isn't really any way, including using `useMemo`, to memoize a selector over _part_ of an object. If you have a context value that is an object with multiple properties and some of those properties change more often than others you may need to split that into multiple contexts to avoid unnecessary re-renders. **DO NOT STICK LARGE COMPLEX OBJECTS IN CONTEXT**.
 
 ## Wrapping Up
 
@@ -276,7 +277,7 @@ And we can extract some heuristics about when to use each:
 
 ## Pachyderm
 
-The elephant in the room is that I haven't mentioned client-side data stores like Redux or Zustand. Even though these may seem similar to the above in some ways (especially Context) they aren't really _composition_ tools per se. They aim at a different problem, albeit with some overlap.
+The elephant in the room is that I haven't mentioned client-side data stores like Redux or Zustand. Even though these may seem similar to the above in some ways (especially Context) they aren't really _composition_ tools per se. They aim at a different problem, albeit with some overlap. Note that Redux and friends do **not** use Context under the hood because of the selector memoization issue outlined above: Redux specifically for example uses Context but only to inject the store instance, not for the actual data accesses.
 
 ## Resource Links
 
