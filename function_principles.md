@@ -25,11 +25,14 @@ Functions are the building blocks of most programs, and adhering to certain prin
 Consider a function like this:
 
 ```typescript
-function processAndNotifyUser(userData: User): string {
+async function processAndNotifyUser(userData: User): Promise<string> {
     const formattedUser = { ...userData, name: userData.firstName + ' ' + userData.lastName.toUpperCase() };
-    saveUser(formattedUser);
-    sendEmail(formattedUser.email, "Welcome!", "Your account has been created.");
-    return `User ${formattedUser.name} processed and notified successfully.`;
+    const resp = await post(userCreationEndpoint, user);
+    const id = await resp.text();
+    formattedUser.id = id;
+    const welcome = `Welcome ${formattedUser.name}!, your account has been created.");
+    await email.send(formattedUser.email, welcome);
+    return id;
 }
 ```
 
@@ -69,6 +72,8 @@ function registerNewUser(userData: User): string {
     return `User ${formattedUser.name} registered successfully.`;
 }
 ```
+
+The side-effective and value-transforming functions can be independently tested, and then the `registerNewUser` orchestration function can, if necessary, mock out alldependencies and test only that the correct functions are called. But I frequently forgo testing dispatchers entirely at the unit test level.
 
 ### Composition Patterns
 
